@@ -93,6 +93,10 @@
       <span class="material-symbols-outlined">north</span>
       <span class="text-body-sm font-medium">Elevar Stock</span>
     </a>
+    <a data-nav="analisis" data-select="consolidar" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" href="#">
+      <span class="material-symbols-outlined">merge</span>
+      <span class="text-body-sm font-medium">Consolidar</span>
+    </a>
     <a data-nav="raw_saldo" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" href="#">
       <span class="material-symbols-outlined">inventory_2</span><span class="text-body-sm font-medium">Saldo de Almacén</span>
     </a>
@@ -127,11 +131,17 @@
       <p class="text-xs text-on-surface-variant">Reubicación de mercadería según demanda</p>
     </div>
     <div class="flex items-center gap-4">
-      <div class="flex items-center gap-2 border-r border-outline-variant pr-4">
-        <div class="flex -space-x-2">
-          <div id="alertCountBadge" class="w-6 h-6 rounded-full border-2 border-white bg-error-container text-on-error-container flex items-center justify-center text-[10px] font-bold">0</div>
+      <div class="relative">
+        <button id="alertsButton" class="flex items-center gap-2 border-r border-outline-variant pr-4 hover:bg-surface-container-low rounded-lg py-1.5 pl-1 transition-colors">
+          <div class="flex -space-x-2">
+            <div id="alertCountBadge" class="w-6 h-6 rounded-full border-2 border-white bg-error-container text-on-error-container flex items-center justify-center text-[10px] font-bold">0</div>
+          </div>
+          <span class="text-xs font-medium text-on-surface-variant">Alertas activas</span>
+          <span class="material-symbols-outlined text-sm text-on-surface-variant/60">expand_more</span>
+        </button>
+        <div id="alertsDropdown" class="hidden absolute right-0 top-full mt-2 w-64 bg-white border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
+          <div id="alertsDropdownList" class="flex flex-col divide-y divide-outline-variant/20"></div>
         </div>
-        <span class="text-xs font-medium text-on-surface-variant">Alertas activas</span>
       </div>
       <button id="analizarBtn" class="flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed text-body-sm font-bold px-5 py-2.5 rounded-full hover:opacity-90 active:scale-95 transition-all shadow-sm">
         <span class="material-symbols-outlined text-sm">insights</span>
@@ -163,6 +173,9 @@
             <option value="B">Clase B (Media Frecuencia)</option>
             <option value="C">Clase C (Baja Frecuencia)</option>
           </select>
+          <button id="limpiarFiltrosBtn" class="w-full flex items-center justify-center gap-2 text-xs font-bold text-on-surface-variant hover:text-primary border border-outline-variant rounded-xl px-4 py-2 hover:bg-surface-container-low transition-colors">
+            <span class="material-symbols-outlined text-sm">filter_alt_off</span>Limpiar filtros
+          </button>
         </section>
 
         <section class="flex flex-col gap-stack-sm">
@@ -175,14 +188,18 @@
               </div>
               <span class="material-symbols-outlined opacity-50 group-hover:translate-x-1 transition-transform">chevron_right</span>
             </button>
-            <div class="grid grid-cols-2 gap-2">
-              <button data-select="fefo" class="action-shortcut flex flex-col items-center justify-center p-4 bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors group">
+            <div class="grid grid-cols-3 gap-2">
+              <button data-select="fefo" class="action-shortcut flex flex-col items-center justify-center p-3 bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors group">
                 <span class="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">priority_high</span>
-                <span class="text-[11px] font-bold mt-2">FEFO (Adelante)</span>
+                <span class="text-[10px] font-bold mt-2 text-center">FEFO (Adelante)</span>
               </button>
-              <button data-select="elevar" class="action-shortcut flex flex-col items-center justify-center p-4 bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors group">
+              <button data-select="elevar" class="action-shortcut flex flex-col items-center justify-center p-3 bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors group">
                 <span class="material-symbols-outlined text-secondary group-hover:-translate-y-1 transition-transform">north</span>
-                <span class="text-[11px] font-bold mt-2">Elevar a altura</span>
+                <span class="text-[10px] font-bold mt-2 text-center">Elevar a altura</span>
+              </button>
+              <button data-select="consolidar" class="action-shortcut flex flex-col items-center justify-center p-3 bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors group">
+                <span class="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">merge</span>
+                <span class="text-[10px] font-bold mt-2 text-center">Consolidar</span>
               </button>
             </div>
           </div>
@@ -205,6 +222,11 @@
               <div class="w-3 h-3 rounded-full bg-primary-container shrink-0 mt-1"></div>
               <div class="flex flex-col"><span class="text-[13px] font-bold text-primary">Elevar</span>
               <span class="text-[11px] leading-tight text-on-surface-variant">Baja frecuencia + ocupa línea de sacado.</span></div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-3 h-3 rounded-full bg-amber-400 shrink-0 mt-1"></div>
+              <div class="flex flex-col"><span class="text-[13px] font-bold text-primary">Consolidar</span>
+              <span class="text-[11px] leading-tight text-on-surface-variant">Fragmentado en varias ubicaciones + saldo excede el promedio mensual.</span></div>
             </div>
           </div>
         </section>
@@ -232,11 +254,18 @@
                   <option value="alta_frecuencia">Bajar</option>
                   <option value="fefo">Adelante</option>
                   <option value="elevar">Elevar</option>
+                  <option value="consolidar">Consolidar</option>
                 </select>
               </div>
               <button id="exportXlsBtn" class="flex items-center gap-2 bg-white border border-outline-variant text-primary text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-surface-container-low transition-all shadow-sm">
-                <span class="material-symbols-outlined text-sm">download</span>Exportar XLS
+                <span class="material-symbols-outlined text-sm">download</span><span id="exportXlsLabel">Exportar XLS</span>
               </button>
+            </div>
+
+            <div id="saldoSubviewBar" class="hidden flex items-center gap-2 mb-3 flex-wrap">
+              <button data-subview="todos" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors bg-primary text-white border-primary">Todos</button>
+              <button data-subview="consolidar" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors">Consolidar (múltiples ubicaciones)</button>
+              <button data-subview="stock_bajo" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors">Stock bajo (1-5 uds)</button>
             </div>
 
             <div id="reportTitle" class="text-xs text-on-surface-variant mb-2"></div>
@@ -410,6 +439,23 @@ function analizar(){
   const clase1M = clasificarABC(freq1M);
   const clase3M = clasificarABC(freq3M);
 
+  // Promedio de unidades por mes (independiente de lote/ubicación), evaluando los últimos 3 meses
+  function sumaUnidadesEnVentana(cutoff){
+    const map = new Map();
+    rawKardex.forEach(r => {
+      const cod = normCode(r['CODIGO']);
+      const fecha = (r['FECHA']||'').toString().trim();
+      const cant = parseFloat(r['CANTIDAD DESPACHADA']) || 0;
+      if(!cod) return;
+      if(cutoff && fecha < cutoff) return;
+      map.set(cod, (map.get(cod)||0) + cant);
+    });
+    return map;
+  }
+  const unidades3M = sumaUnidadesEnVentana(cutoff3M);
+  const promedioMensual = new Map();
+  unidades3M.forEach((total, cod) => promedioMensual.set(cod, total / 3));
+
   function calcPrioridad(clase, fefoRank, enLinea){
     if(clase === 'A' && fefoRank === 1 && !enLinea) return 'alta_frecuencia';
     if(fefoRank === 1 && !enLinea) return 'fefo';
@@ -443,13 +489,26 @@ function analizar(){
     const c3m = clase3M.get(cod) || 'C';
     const f1m = freq1M.get(cod) || 0;
     const f3m = freq3M.get(cod) || 0;
+    const promMes = promedioMensual.get(cod) || 0;
+
+    // Consolidar: el código está fragmentado en varias ubicaciones de línea de sacado
+    // Y el saldo acumulado en esas ubicaciones excede varias veces su promedio mensual
+    // (ambas condiciones a la vez). El multiplicador (CONSOLIDAR_MULTIPLICADOR) es ajustable.
+    const CONSOLIDAR_MULTIPLICADOR = 2;
+    const lineaTemp = items.filter(it => lineaSet.has(cod + '|' + it.ubicacion));
+    const numUbicacionesEnLinea = new Set(lineaTemp.map(it => it.ubicacion)).size;
+    const saldoEnLinea = lineaTemp.reduce((s, it) => s + it.saldo, 0);
+    const fragmentado = numUbicacionesEnLinea >= 2;
+    const exceso = promMes > 0 ? (saldoEnLinea > CONSOLIDAR_MULTIPLICADOR * promMes) : (saldoEnLinea > 0);
+    const consolidar = fragmentado && exceso;
+
     items.forEach((it, idx) => {
       const fefoRank = idx + 1;
       const enLinea = lineaSet.has(cod + '|' + it.ubicacion);
       const prioridad1m = calcPrioridad(c1m, fefoRank, enLinea);
       const prioridad3m = calcPrioridad(c3m, fefoRank, enLinea);
       processed.push({
-        ...it, fefoRank, enLinea,
+        ...it, fefoRank, enLinea, promMes, consolidar,
         clase1m: c1m, frecuencia1m: f1m, prioridad1m,
         clase3m: c3m, frecuencia3m: f3m, prioridad3m,
         // la prioridad "principal" que maneja filtros, KPIs y resaltado es la de 3 meses
@@ -484,15 +543,59 @@ function analizar(){
   rows = processed;
   document.getElementById('engineStatus').textContent =
     'Estado del Motor: Activo - Último análisis ' + new Date().toLocaleTimeString('es-PE') +
-    (anchor ? ' · Ventanas calculadas desde ' + toYyyymmdd(anchor) : '');
+    (anchor ? ' · Ventana analizada: desde ' + formatFecha(cutoff3M) + ' hasta ' + formatFecha(toYyyymmdd(anchor)) : '');
   renderAlertCount();
   render();
 }
 
 function renderAlertCount(){
-  const alertas = rows.filter(r => r.prioridad !== 'ok').length;
+  const desglose = [
+    {key:'alta_frecuencia', label:'Bajar a línea de sacado', count: rows.filter(r => r.prioridad === 'alta_frecuencia').length, icon:'south'},
+    {key:'fefo', label:'Adelante (FEFO)', count: rows.filter(r => r.prioridad === 'fefo').length, icon:'priority_high'},
+    {key:'elevar', label:'Elevar a altura', count: rows.filter(r => r.prioridad === 'elevar').length, icon:'north'},
+    {key:'consolidar', label:'Consolidar', count: rows.filter(r => r.consolidar).length, icon:'merge'}
+  ];
+  const alertas = rows.filter(r => r.prioridad !== 'ok' || r.consolidar).length;
   document.getElementById('alertCountBadge').textContent = alertas;
+
+  document.getElementById('alertsDropdownList').innerHTML = desglose.map(d => `
+    <button data-jump="${d.key}" class="alert-jump flex items-center justify-between px-4 py-3 hover:bg-surface-container-low transition-colors text-left w-full">
+      <span class="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+        <span class="material-symbols-outlined text-sm text-primary">${d.icon}</span>${d.label}
+      </span>
+      <span class="text-sm font-bold text-primary">${d.count}</span>
+    </button>`).join('') +
+    (alertas === 0 ? '<div class="px-4 py-3 text-xs text-on-surface-variant/60 text-center">Sin alertas activas</div>' : '');
 }
+
+document.getElementById('alertsButton').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('alertsDropdown').classList.toggle('hidden');
+});
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('alertsDropdown');
+  if(!dd.classList.contains('hidden') && !dd.contains(e.target)){
+    dd.classList.add('hidden');
+  }
+});
+document.getElementById('alertsDropdownList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.alert-jump');
+  if(!btn) return;
+  currentNav = 'analisis';
+  setActiveNav('analisis');
+  document.getElementById('obsFilter').value = btn.dataset.jump;
+  document.getElementById('alertsDropdown').classList.add('hidden');
+  render();
+});
+
+function limpiarFiltros(){
+  document.getElementById('searchInput').value = '';
+  document.getElementById('claseFilter').value = '';
+  document.getElementById('obsFilter').value = '';
+  render();
+}
+document.getElementById('limpiarFiltrosBtn').addEventListener('click', limpiarFiltros);
+
 
 function claseBadge(c){ return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full badge-${c}">${c}</span>`; }
 
@@ -522,7 +625,8 @@ function renderAnalisisTable(){
   const obs = document.getElementById('obsFilter').value;
 
   const filtered = rows.filter(r => {
-    if(obs && r.prioridad !== obs) return false;
+    if(obs === 'consolidar'){ if(!r.consolidar) return false; }
+    else if(obs && r.prioridad !== obs) return false;
     if(claseFilter && r.clase !== claseFilter) return false;
     if(search && !(r.codigo.includes(search) || r.ubicacion.includes(search))) return false;
     return true;
@@ -536,8 +640,10 @@ function renderAnalisisTable(){
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Lote BPCS</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Expira</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-right text-[11px]">Saldo</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-right text-[11px]">Prom. Unid/Mes<div class="text-[8px] font-normal normal-case tracking-normal text-on-surface-variant/70">últimos 3 meses</div></th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px]">FEFO</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px] bg-tertiary-fixed/40">Destino sugerido<div class="text-[8px] font-normal normal-case tracking-normal text-on-surface-variant/70">liberado por Elevar</div></th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px] bg-amber-100">Consolidar</th>
       <th colspan="3" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
         Detalle a 1 Mes${rango1MLabel ? `<div class="text-[9px] font-normal normal-case tracking-normal text-on-surface-variant/70 mt-0.5">${rango1MLabel}</div>` : ''}
       </th>
@@ -562,8 +668,10 @@ function renderAnalisisTable(){
       <td class="px-2 py-2 text-xs text-on-surface-variant font-data-mono">${r.loteBpcs}</td>
       <td class="px-2 py-2 text-xs text-on-surface-variant">${formatFecha(r.expira)}</td>
       <td class="px-2 py-2 text-xs font-medium text-right">${r.saldo}</td>
+      <td class="px-2 py-2 text-xs font-bold text-right text-secondary">${r.promMes.toFixed(1)}</td>
       <td class="px-2 py-2 text-xs text-center text-on-surface-variant">#${r.fefoRank}</td>
       <td class="px-2 py-2 text-xs font-bold text-center ${r.destinoSugerido ? 'text-on-tertiary-fixed-variant' : 'text-on-surface-variant/40'}">${r.destinoSugerido || '-'}</td>
+      <td class="px-2 py-2 text-center">${r.consolidar ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Consolidar</span>' : '<span class="text-on-surface-variant/40 text-xs">-</span>'}</td>
       <td class="px-2 py-2 text-xs text-right border-l border-outline-variant/20">${r.frecuencia1m}</td>
       <td class="px-2 py-2 text-center">${claseBadge(r.clase1m)}</td>
       <td class="px-2 py-2 text-center">${obsBadgeSmall(r.prioridad1m)}</td>
@@ -584,7 +692,37 @@ const RAW_CONFIG = {
     fmt: {'FECHA': formatFecha} }
 };
 
+let saldoSubview = 'todos';
+let currentSaldoExport = null;
+
+function analizarSaldoConsolidar(){
+  const byCode = new Map();
+  rawSaldo.forEach(r => {
+    const cod = normCode(r['CODIGO']);
+    if(!cod) return;
+    if(!byCode.has(cod)) byCode.set(cod, []);
+    byCode.get(cod).push(r);
+  });
+  const resultado = [];
+  byCode.forEach((items) => {
+    const ubicaciones = new Set(items.map(r => normLoc(r['UBICACIÓN'] ?? r['UBICACION'])));
+    if(ubicaciones.size > 1){
+      const saldoTotal = items.reduce((s,r) => s + (parseFloat(r['SALDO'])||0), 0);
+      items.forEach(r => resultado.push({...r, __numUbicaciones: ubicaciones.size, __saldoTotalCodigo: saldoTotal}));
+    }
+  });
+  return resultado;
+}
+
+function analizarStockBajo(){
+  return rawSaldo.filter(r => {
+    const s = parseFloat(r['SALDO']) || 0;
+    return s > 0 && s <= 5;
+  });
+}
+
 function renderRawTable(nav){
+  if(nav === 'raw_saldo'){ renderSaldoSubview(); return; }
   const cfg = RAW_CONFIG[nav];
   const search = document.getElementById('searchInput').value.trim().toUpperCase();
   const all = cfg.data();
@@ -598,6 +736,42 @@ function renderRawTable(nav){
   document.getElementById('tableBody').innerHTML = slice.map(r => '<tr class="hover:bg-surface-container-lowest transition-colors">' +
     cfg.cols.map(([key]) => `<td class="px-3 py-2 text-xs text-on-surface-variant">${cfg.fmt[key] ? cfg.fmt[key](r[key]) : (r[key] ?? '')}</td>`).join('') + '</tr>'
   ).join('');
+}
+
+function renderSaldoSubview(){
+  const search = document.getElementById('searchInput').value.trim().toUpperCase();
+  const baseCols = [['CODIGO','Código'],['UBICACIÓN','Ubicación'],['LOTE','Lote'],['LOTE BPCS','Lote BPCS'],['FECHA DE EXPIRA','Expira'],['SALDO','Saldo']];
+  let data, extraCols = [], titulo;
+
+  if(saldoSubview === 'consolidar'){
+    data = analizarSaldoConsolidar();
+    extraCols = [['__numUbicaciones','N° Ubicaciones'],['__saldoTotalCodigo','Saldo Total Código']];
+    titulo = 'Códigos repetidos en varias ubicaciones (candidatos a consolidar)';
+  } else if(saldoSubview === 'stock_bajo'){
+    data = analizarStockBajo();
+    titulo = 'Stock bajo: entre 1 y 5 unidades';
+  } else {
+    data = rawSaldo;
+    titulo = 'Saldo_Almacen (todos)';
+  }
+
+  const cols = baseCols.concat(extraCols);
+  const filtered = search ? data.filter(r => baseCols.some(([key]) => (r[key]||'').toString().toUpperCase().includes(search))) : data;
+
+  document.getElementById('reportTitle').textContent = `Mostrando ${Math.min(filtered.length, RAW_LIMIT)} de ${filtered.length} filas — ${titulo}`;
+  document.getElementById('tableHead').innerHTML = '<tr>' + cols.map(([,label]) => `<th class="px-3 py-2 font-bold uppercase tracking-widest text-[11px]">${label}</th>`).join('') + '</tr>';
+
+  const slice = filtered.slice(0, RAW_LIMIT);
+  document.getElementById('emptyState').classList.toggle('hidden', slice.length > 0);
+  document.getElementById('tableBody').innerHTML = slice.map(r => '<tr class="hover:bg-surface-container-lowest transition-colors">' +
+    cols.map(([key]) => {
+      let val = r[key] ?? '';
+      if(key === 'FECHA DE EXPIRA') val = formatFecha(val);
+      return `<td class="px-3 py-2 text-xs text-on-surface-variant">${val}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+
+  currentSaldoExport = { cols, rows: filtered };
 }
 
 function renderDataSourcesBar(){
@@ -656,15 +830,16 @@ function exportFilteredXls(){
   const claseFilter = document.getElementById('claseFilter').value;
   const obs = document.getElementById('obsFilter').value;
   const filtered = rows.filter(r => {
-    if(obs && r.prioridad !== obs) return false;
+    if(obs === 'consolidar'){ if(!r.consolidar) return false; }
+    else if(obs && r.prioridad !== obs) return false;
     if(claseFilter && r.clase !== claseFilter) return false;
     if(search && !(r.codigo.includes(search) || r.ubicacion.includes(search))) return false;
     return true;
   });
-  const headers = ['CODIGO','UBICACION','LOTE_BPCS','FECHA_EXPIRA','FEFO','DESTINO_SUGERIDO','SALDO','FREC_1M','CLASE_1M','OBS_1M','FREC_3M','CLASE_3M','OBS_3M'];
+  const headers = ['CODIGO','UBICACION','LOTE_BPCS','FECHA_EXPIRA','FEFO','DESTINO_SUGERIDO','SALDO','PROM_UNIDADES_MES','CONSOLIDAR','FREC_1M','CLASE_1M','OBS_1M','FREC_3M','CLASE_3M','OBS_3M'];
   const obsLabel = {alta_frecuencia:'Bajar', fefo:'Adelante', elevar:'Elevar', ok:'Sin alerta'};
   const aoa = [headers].concat(filtered.map(r => [
-    r.codigo, r.ubicacion, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.destinoSugerido || '-', r.saldo,
+    r.codigo, r.ubicacion, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.destinoSugerido || '-', r.saldo, r.promMes.toFixed(1), r.consolidar ? 'Si' : '-',
     r.frecuencia1m, r.clase1m, obsLabel[r.prioridad1m],
     r.frecuencia3m, r.clase3m, obsLabel[r.prioridad3m]
   ]));
@@ -714,12 +889,28 @@ function render(){
   const isRaw = currentNav.startsWith('raw_');
   document.getElementById('obsFilter').parentElement.classList.toggle('hidden', isRaw);
   document.getElementById('claseFilter').classList.toggle('hidden', isRaw);
-  document.getElementById('exportXlsBtn').classList.toggle('hidden', isRaw);
+  document.getElementById('saldoSubviewBar').classList.toggle('hidden', currentNav !== 'raw_saldo');
+  const showExport = currentNav === 'analisis' || currentNav === 'raw_saldo';
+  document.getElementById('exportXlsBtn').classList.toggle('hidden', !showExport);
+  document.getElementById('exportXlsLabel').textContent = currentNav === 'raw_saldo' ? 'Descargar detalle' : 'Exportar XLS';
   setActiveObs(document.getElementById('obsFilter').value);
 
   if(isRaw) renderRawTable(currentNav);
   else renderAnalisisTable();
 }
+
+document.querySelectorAll('.saldo-subview-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    saldoSubview = btn.dataset.subview;
+    document.querySelectorAll('.saldo-subview-btn').forEach(b => {
+      const active = b === btn;
+      b.classList.toggle('bg-primary', active);
+      b.classList.toggle('text-white', active);
+      b.classList.toggle('border-primary', active);
+    });
+    render();
+  });
+});
 
 document.querySelectorAll('.nav-link[data-nav]').forEach(link => {
   link.addEventListener('click', (e) => {
@@ -752,7 +943,28 @@ document.getElementById('configSaveBtn').addEventListener('click', () => {
 
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
 document.getElementById('analizarBtn').addEventListener('click', analizar);
-document.getElementById('exportXlsBtn').addEventListener('click', exportFilteredXls);
+document.getElementById('exportXlsBtn').addEventListener('click', () => {
+  if(currentNav === 'analisis') exportFilteredXls();
+  else if(currentNav === 'raw_saldo') exportSaldoSubviewXls();
+});
+
+function exportSaldoSubviewXls(){
+  if(!currentSaldoExport) return;
+  const { cols, rows: data } = currentSaldoExport;
+  const headers = cols.map(([,label]) => label);
+  const aoa = [headers].concat(data.map(r => cols.map(([key]) => {
+    let val = r[key] ?? '';
+    if(key === 'FECHA DE EXPIRA') val = formatFecha(val);
+    return val;
+  })));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headers.map(() => ({wch: 16}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Detalle_Saldo');
+  const filename = saldoSubview === 'consolidar' ? 'saldo_consolidar.xlsx'
+    : (saldoSubview === 'stock_bajo' ? 'saldo_stock_bajo.xlsx' : 'saldo_almacen.xlsx');
+  XLSX.writeFile(wb, filename);
+}
 document.getElementById('claseFilter').addEventListener('change', render);
 document.getElementById('obsFilter').addEventListener('change', render);
 let searchTimeout;
