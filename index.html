@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Análisis de Slotting - Warehouse Intelligence</title>
+<title>OSAWMS - Análisis de Slotting</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -72,8 +72,8 @@
   <div class="p-6 flex items-center gap-3">
     <span class="material-symbols-outlined text-3xl">warehouse</span>
     <div class="flex flex-col">
-      <h1 class="text-title-sm font-bold leading-tight">Warehouse Intelligence</h1>
-      <p class="text-[10px] text-on-primary-container uppercase tracking-widest font-bold">Logistics Logic</p>
+      <h1 class="text-title-sm font-bold leading-tight">OSAWMS</h1>
+      <p class="text-[10px] text-on-primary-container uppercase tracking-widest font-bold">Slotting</p>
     </div>
   </div>
   <nav class="flex-1 px-3 py-4 flex flex-col gap-1" id="sidebarNav">
@@ -114,10 +114,10 @@
   </nav>
   <div class="p-6 border-t border-white/10">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs">OP</div>
+      <div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs">OB</div>
       <div class="flex flex-col">
-        <span class="text-xs font-bold">Operador 01</span>
-        <span class="text-[10px] opacity-60">Centro Dist. Norte</span>
+        <span class="text-xs font-bold">Omar Bernales</span>
+        <span class="text-[10px] opacity-60">Odan89</span>
       </div>
     </div>
   </div>
@@ -266,6 +266,7 @@
               <button data-subview="todos" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors bg-primary text-white border-primary">Todos</button>
               <button data-subview="consolidar" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors">Consolidar (múltiples ubicaciones)</button>
               <button data-subview="stock_bajo" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors">Stock bajo (1-5 uds)</button>
+              <button data-subview="stock_bajo_12" class="saldo-subview-btn text-xs font-bold px-3 py-1.5 rounded-full border border-outline-variant transition-colors">Stock bajo (1-12 uds)</button>
             </div>
 
             <div id="reportTitle" class="text-xs text-on-surface-variant mb-2"></div>
@@ -291,6 +292,9 @@
       </div>
     </div>
   </main>
+  <footer class="text-center py-3 text-[11px] italic text-on-surface-variant/50 border-t border-outline-variant">
+    "No busco encajar en la cultura de la empresa; mi objetivo es elevar los estándares de la industria."
+  </footer>
 </div>
 
 <!-- Modal de Ajustes -->
@@ -714,11 +718,23 @@ function analizarSaldoConsolidar(){
   return resultado;
 }
 
-function analizarStockBajo(){
-  return rawSaldo.filter(r => {
-    const s = parseFloat(r['SALDO']) || 0;
-    return s > 0 && s <= 5;
+function analizarStockBajo(umbral){
+  const byCode = new Map();
+  rawSaldo.forEach(r => {
+    const cod = normCode(r['CODIGO']);
+    if(!cod) return;
+    if(!byCode.has(cod)) byCode.set(cod, []);
+    byCode.get(cod).push(r);
   });
+  const resultado = [];
+  byCode.forEach((items, cod) => {
+    const saldoTotal = items.reduce((s,r) => s + (parseFloat(r['SALDO'])||0), 0);
+    // Se evalúa el TOTAL del código (sumando todos sus lotes/ubicaciones), no cada fila por separado
+    if(saldoTotal > 0 && saldoTotal <= umbral){
+      items.forEach(r => resultado.push({...r, __saldoTotalCodigo: saldoTotal, __numLotes: items.length}));
+    }
+  });
+  return resultado;
 }
 
 function renderRawTable(nav){
@@ -748,8 +764,13 @@ function renderSaldoSubview(){
     extraCols = [['__numUbicaciones','N° Ubicaciones'],['__saldoTotalCodigo','Saldo Total Código']];
     titulo = 'Códigos repetidos en varias ubicaciones (candidatos a consolidar)';
   } else if(saldoSubview === 'stock_bajo'){
-    data = analizarStockBajo();
-    titulo = 'Stock bajo: entre 1 y 5 unidades';
+    data = analizarStockBajo(5);
+    extraCols = [['__saldoTotalCodigo','Saldo Total Código'],['__numLotes','N° Lotes']];
+    titulo = 'Stock bajo: total por código entre 1 y 5 unidades (sumando todos sus lotes/ubicaciones)';
+  } else if(saldoSubview === 'stock_bajo_12'){
+    data = analizarStockBajo(12);
+    extraCols = [['__saldoTotalCodigo','Saldo Total Código'],['__numLotes','N° Lotes']];
+    titulo = 'Stock bajo: total por código entre 1 y 12 unidades (sumando todos sus lotes/ubicaciones)';
   } else {
     data = rawSaldo;
     titulo = 'Saldo_Almacen (todos)';
@@ -962,7 +983,8 @@ function exportSaldoSubviewXls(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Detalle_Saldo');
   const filename = saldoSubview === 'consolidar' ? 'saldo_consolidar.xlsx'
-    : (saldoSubview === 'stock_bajo' ? 'saldo_stock_bajo.xlsx' : 'saldo_almacen.xlsx');
+    : (saldoSubview === 'stock_bajo' ? 'saldo_stock_bajo_5.xlsx'
+    : (saldoSubview === 'stock_bajo_12' ? 'saldo_stock_bajo_12.xlsx' : 'saldo_almacen.xlsx'));
   XLSX.writeFile(wb, filename);
 }
 document.getElementById('claseFilter').addEventListener('change', render);
