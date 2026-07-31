@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
         tailwind.config = {
@@ -149,7 +150,7 @@
 
     <div class="grid grid-cols-12 gap-gutter items-start">
       <!-- Left Column -->
-      <div class="col-span-12 lg:col-span-3 flex flex-col gap-stack-lg">
+      <div class="col-span-12 lg:col-span-2 flex flex-col gap-stack-lg">
         <section class="flex flex-col gap-3">
           <span class="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widest">Búsqueda y Filtro</span>
           <div class="relative group">
@@ -210,7 +211,7 @@
       </div>
 
       <!-- Right Column -->
-      <div class="col-span-12 lg:col-span-9 flex flex-col gap-stack-lg">
+      <div class="col-span-12 lg:col-span-10 flex flex-col gap-stack-lg">
         <!-- Data Sources Bar -->
         <section class="flex flex-col gap-3">
           <div class="flex items-center justify-between">
@@ -221,7 +222,7 @@
         </section>
 
         <!-- Main Table -->
-        <div class="bg-white border border-outline-variant rounded-2xl flex-1 min-h-[500px] flex flex-col p-container-padding relative overflow-hidden shadow-sm">
+        <div class="bg-white border border-outline-variant rounded-2xl flex-1 min-h-[500px] flex flex-col p-4 relative overflow-hidden shadow-sm">
           <div class="relative z-10 w-full h-full flex flex-col">
             <div class="flex items-center justify-between mb-4 gap-4 flex-wrap">
               <div class="flex items-center gap-3">
@@ -233,15 +234,15 @@
                   <option value="elevar">Elevar</option>
                 </select>
               </div>
-              <button id="exportBtn" class="flex items-center gap-2 bg-white border border-outline-variant text-primary text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-surface-container-low transition-all shadow-sm">
-                <span class="material-symbols-outlined text-sm">download</span>Exportar CSV
+              <button id="exportXlsBtn" class="flex items-center gap-2 bg-white border border-outline-variant text-primary text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-surface-container-low transition-all shadow-sm">
+                <span class="material-symbols-outlined text-sm">download</span>Exportar XLS
               </button>
             </div>
 
             <div id="reportTitle" class="text-xs text-on-surface-variant mb-2"></div>
 
             <div class="overflow-hidden rounded-xl border border-outline-variant bg-white shadow-sm flex-1 flex flex-col">
-              <div class="overflow-auto max-h-[520px] hide-scrollbar">
+              <div class="overflow-auto max-h-[640px] hide-scrollbar">
                 <table class="w-full text-left border-collapse">
                   <thead id="tableHead" class="bg-surface-container-low border-b border-outline-variant sticky top-0 z-10 text-label-caps text-on-surface-variant"></thead>
                   <tbody id="tableBody" class="divide-y divide-outline-variant/10"></tbody>
@@ -510,43 +511,43 @@ function renderAnalisisTable(){
   document.getElementById('reportTitle').textContent = `${filtered.length} registros · prioridad principal calculada a 3 meses (kardex: ${rango3MLabel || 'sin fechas detectadas'})`;
   document.getElementById('tableHead').innerHTML = `
     <tr>
-      <th rowspan="2" class="px-4 py-3 font-bold uppercase tracking-widest align-bottom">Código</th>
-      <th rowspan="2" class="px-4 py-3 font-bold uppercase tracking-widest align-bottom">Ubicación</th>
-      <th rowspan="2" class="px-4 py-3 font-bold uppercase tracking-widest align-bottom">Lote BPCS</th>
-      <th rowspan="2" class="px-4 py-3 font-bold uppercase tracking-widest align-bottom">Expira</th>
-      <th rowspan="2" class="px-4 py-3 font-bold uppercase tracking-widest align-bottom text-right">Saldo</th>
-      <th rowspan="2" class="px-4 py-3 font-bold uppercase tracking-widest align-bottom text-center">FEFO</th>
-      <th colspan="3" class="px-4 py-2 font-bold uppercase tracking-widest text-center border-l border-outline-variant/30 bg-surface-container-low">
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Código</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Ubicación</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Lote BPCS</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Expira</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-right text-[11px]">Saldo</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px]">FEFO</th>
+      <th colspan="3" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
         Detalle a 1 Mes${rango1MLabel ? `<div class="text-[9px] font-normal normal-case tracking-normal text-on-surface-variant/70 mt-0.5">${rango1MLabel}</div>` : ''}
       </th>
-      <th colspan="3" class="px-4 py-2 font-bold uppercase tracking-widest text-center border-l border-outline-variant/30 bg-surface-container-low">
+      <th colspan="3" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
         Detalle a 3 Meses${rango3MLabel ? `<div class="text-[9px] font-normal normal-case tracking-normal text-on-surface-variant/70 mt-0.5">${rango3MLabel}</div>` : ''}
       </th>
     </tr>
     <tr>
-      <th class="px-3 py-2 font-bold uppercase tracking-widest text-right border-l border-outline-variant/30">Frec.</th>
-      <th class="px-3 py-2 font-bold uppercase tracking-widest text-center">Clase</th>
-      <th class="px-3 py-2 font-bold uppercase tracking-widest text-center">Obs.</th>
-      <th class="px-3 py-2 font-bold uppercase tracking-widest text-right border-l border-outline-variant/30">Frec.</th>
-      <th class="px-3 py-2 font-bold uppercase tracking-widest text-center">Clase</th>
-      <th class="px-3 py-2 font-bold uppercase tracking-widest text-center">Obs.</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-right text-[11px] border-l border-outline-variant/30">Frec.</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Clase</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Obs.</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-right text-[11px] border-l border-outline-variant/30">Frec.</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Clase</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Obs.</th>
     </tr>`;
 
   document.getElementById('emptyState').classList.toggle('hidden', filtered.length > 0);
   document.getElementById('tableBody').innerHTML = filtered.map(r => `
     <tr class="hover:bg-surface-container-lowest transition-colors">
-      <td class="px-4 py-3 text-body-sm font-bold text-primary font-data-mono">${r.codigo}</td>
-      <td class="px-4 py-3 text-body-sm text-on-surface-variant">${r.ubicacion}</td>
-      <td class="px-4 py-3 text-body-sm text-on-surface-variant font-data-mono">${r.loteBpcs}</td>
-      <td class="px-4 py-3 text-body-sm text-on-surface-variant">${formatFecha(r.expira)}</td>
-      <td class="px-4 py-3 text-body-sm font-medium text-right">${r.saldo}</td>
-      <td class="px-4 py-3 text-body-sm text-center text-on-surface-variant">#${r.fefoRank}</td>
-      <td class="px-3 py-3 text-body-sm text-right border-l border-outline-variant/20">${r.frecuencia1m}</td>
-      <td class="px-3 py-3 text-center">${claseBadge(r.clase1m)}</td>
-      <td class="px-3 py-3 text-center">${obsBadgeSmall(r.prioridad1m)}</td>
-      <td class="px-3 py-3 text-body-sm text-right border-l border-outline-variant/20">${r.frecuencia3m}</td>
-      <td class="px-3 py-3 text-center">${claseBadge(r.clase3m)}</td>
-      <td class="px-3 py-3 text-center">${obsBadgeSmall(r.prioridad3m)}</td>
+      <td class="px-2 py-2 text-xs font-bold text-primary font-data-mono">${r.codigo}</td>
+      <td class="px-2 py-2 text-xs text-on-surface-variant">${r.ubicacion}</td>
+      <td class="px-2 py-2 text-xs text-on-surface-variant font-data-mono">${r.loteBpcs}</td>
+      <td class="px-2 py-2 text-xs text-on-surface-variant">${formatFecha(r.expira)}</td>
+      <td class="px-2 py-2 text-xs font-medium text-right">${r.saldo}</td>
+      <td class="px-2 py-2 text-xs text-center text-on-surface-variant">#${r.fefoRank}</td>
+      <td class="px-2 py-2 text-xs text-right border-l border-outline-variant/20">${r.frecuencia1m}</td>
+      <td class="px-2 py-2 text-center">${claseBadge(r.clase1m)}</td>
+      <td class="px-2 py-2 text-center">${obsBadgeSmall(r.prioridad1m)}</td>
+      <td class="px-2 py-2 text-xs text-right border-l border-outline-variant/20">${r.frecuencia3m}</td>
+      <td class="px-2 py-2 text-center">${claseBadge(r.clase3m)}</td>
+      <td class="px-2 py-2 text-center">${obsBadgeSmall(r.prioridad3m)}</td>
     </tr>`).join('');
 }
 
@@ -568,12 +569,12 @@ function renderRawTable(nav){
   const filtered = search ? all.filter(r => cfg.cols.some(([key]) => (r[key]||'').toString().toUpperCase().includes(search))) : all;
 
   document.getElementById('reportTitle').textContent = `Mostrando ${Math.min(filtered.length, RAW_LIMIT)} de ${filtered.length} filas — ${cfg.titulo}`;
-  document.getElementById('tableHead').innerHTML = '<tr>' + cfg.cols.map(([,label]) => `<th class="px-6 py-4 font-bold uppercase tracking-widest">${label}</th>`).join('') + '</tr>';
+  document.getElementById('tableHead').innerHTML = '<tr>' + cfg.cols.map(([,label]) => `<th class="px-3 py-2 font-bold uppercase tracking-widest text-[11px]">${label}</th>`).join('') + '</tr>';
 
   const slice = filtered.slice(0, RAW_LIMIT);
   document.getElementById('emptyState').classList.toggle('hidden', slice.length > 0);
   document.getElementById('tableBody').innerHTML = slice.map(r => '<tr class="hover:bg-surface-container-lowest transition-colors">' +
-    cfg.cols.map(([key]) => `<td class="px-6 py-4 text-body-sm text-on-surface-variant">${cfg.fmt[key] ? cfg.fmt[key](r[key]) : (r[key] ?? '')}</td>`).join('') + '</tr>'
+    cfg.cols.map(([key]) => `<td class="px-3 py-2 text-xs text-on-surface-variant">${cfg.fmt[key] ? cfg.fmt[key](r[key]) : (r[key] ?? '')}</td>`).join('') + '</tr>'
   ).join('');
 }
 
@@ -605,12 +606,12 @@ function renderDataSourcesBar(){
 
 function downloadTemplate(navKey){
   const cfg = RAW_CONFIG[navKey];
-  const header = cfg.cols.map(([key]) => key).join(',');
-  const blob = new Blob([header + '\n'], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = cfg.sheetName + '_plantilla.csv'; a.click();
-  URL.revokeObjectURL(url);
+  const headers = cfg.cols.map(([key]) => key);
+  const ws = XLSX.utils.aoa_to_sheet([headers]);
+  ws['!cols'] = headers.map(() => ({wch: 16}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, cfg.sheetName);
+  XLSX.writeFile(wb, cfg.sheetName + '_plantilla.xlsx');
 }
 
 function getAppsScriptUrl(){ return localStorage.getItem('slotting_apps_script_url') || ''; }
@@ -627,7 +628,7 @@ function openUploadForm(navKey){
   window.open(base + sep + 'sheet=' + encodeURIComponent(cfg.sheetName), '_blank');
 }
 
-function exportFiltered(){
+function exportFilteredXls(){
   if(currentNav !== 'analisis'){ return; }
   const search = document.getElementById('searchInput').value.trim().toUpperCase();
   const claseFilter = document.getElementById('claseFilter').value;
@@ -640,16 +641,16 @@ function exportFiltered(){
   });
   const headers = ['CODIGO','UBICACION','LOTE_BPCS','FECHA_EXPIRA','FEFO','SALDO','FREC_1M','CLASE_1M','OBS_1M','FREC_3M','CLASE_3M','OBS_3M'];
   const obsLabel = {alta_frecuencia:'Bajar', fefo:'Adelante', elevar:'Elevar', ok:'Sin alerta'};
-  const lines = [headers.join(',')].concat(filtered.map(r =>
-    [r.codigo, r.ubicacion, r.loteBpcs, r.expira, r.fefoRank, r.saldo,
-     r.frecuencia1m, r.clase1m, obsLabel[r.prioridad1m],
-     r.frecuencia3m, r.clase3m, obsLabel[r.prioridad3m]].join(',')
-  ));
-  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'analisis_slotting.csv'; a.click();
-  URL.revokeObjectURL(url);
+  const aoa = [headers].concat(filtered.map(r => [
+    r.codigo, r.ubicacion, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.saldo,
+    r.frecuencia1m, r.clase1m, obsLabel[r.prioridad1m],
+    r.frecuencia3m, r.clase3m, obsLabel[r.prioridad3m]
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headers.map(() => ({wch: 14}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Analisis_Slotting');
+  XLSX.writeFile(wb, 'analisis_slotting.xlsx');
 }
 
 function openConfigModal(){
@@ -691,7 +692,7 @@ function render(){
   const isRaw = currentNav.startsWith('raw_');
   document.getElementById('obsFilter').parentElement.classList.toggle('hidden', isRaw);
   document.getElementById('claseFilter').classList.toggle('hidden', isRaw);
-  document.getElementById('exportBtn').classList.toggle('hidden', isRaw);
+  document.getElementById('exportXlsBtn').classList.toggle('hidden', isRaw);
   setActiveObs(document.getElementById('obsFilter').value);
 
   if(isRaw) renderRawTable(currentNav);
@@ -729,7 +730,7 @@ document.getElementById('configSaveBtn').addEventListener('click', () => {
 
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
 document.getElementById('analizarBtn').addEventListener('click', analizar);
-document.getElementById('exportBtn').addEventListener('click', exportFiltered);
+document.getElementById('exportXlsBtn').addEventListener('click', exportFilteredXls);
 document.getElementById('claseFilter').addEventListener('change', render);
 document.getElementById('obsFilter').addEventListener('change', render);
 let searchTimeout;
