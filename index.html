@@ -502,6 +502,7 @@ function analizar(){
     });
     return map;
   }
+  const unidades1M = sumaUnidadesEnVentana(cutoff1M);
   const unidades3M = sumaUnidadesEnVentana(cutoff3M);
   const promedioMensual = new Map();
   unidades3M.forEach((total, cod) => promedioMensual.set(cod, total / 3));
@@ -554,17 +555,44 @@ function analizar(){
     const f1m = freq1M.get(cod) || 0;
     const f3m = freq3M.get(cod) || 0;
     const promMes = promedioMensual.get(cod) || 0;
+    const ventasTotal3M = unidades3M.get(cod) || 0;
+    const u1m = unidades1M.get(cod) || 0;
+    const u3m = unidades3M.get(cod) || 0;
 
-    // Consolidar: el código está fragmentado en varias ubicaciones de línea de sacado
-    // Y el saldo acumulado en esas ubicaciones excede varias veces su promedio mensual
-    // (ambas condiciones a la vez). El multiplicador (CONSOLIDAR_MULTIPLICADOR) es ajustable.
+    // Consolidar: se dispara por CUALQUIERA de estos dos criterios (no hace falta que se
+    // cumplan ambos):
+    // A) Fragmentado en varias ubicaciones DENTRO de línea de sacado, con saldo que excede
+    //    varias veces el promedio mensual (exceso de espacio ocupado innecesariamente).
+    // B) Fragmentado en varias ubicaciones EN GENERAL (cualquier tipo, línea o altura), con
+    //    saldo total tan ajustado que no supera el 150% de lo vendido en 3 meses — el stock
+    //    es tan poco que no vale la pena tenerlo repartido, conviene juntarlo en un solo lugar.
     const CONSOLIDAR_MULTIPLICADOR = 2;
+    const CONSOLIDAR_UMBRAL_VENTAS = 1.5;
     const lineaTemp = items.filter(it => lineaSet.has(cod + '|' + it.ubicacion));
     const numUbicacionesEnLinea = new Set(lineaTemp.map(it => it.ubicacion)).size;
     const saldoEnLinea = lineaTemp.reduce((s, it) => s + it.saldo, 0);
-    const fragmentado = numUbicacionesEnLinea >= 2;
-    const exceso = promMes > 0 ? (saldoEnLinea > CONSOLIDAR_MULTIPLICADOR * promMes) : (saldoEnLinea > 0);
-    const consolidar = fragmentado && exceso;
+    const fragmentadoEnLinea = numUbicacionesEnLinea >= 2;
+    const excesoEnLinea = promMes > 0 ? (saldoEnLinea > CONSOLIDAR_MULTIPLICADOR * promMes) : (saldoEnLinea > 0);
+    const criterioA = fragmentadoEnLinea && excesoEnLinea;
+
+    const numUbicacionesTotal = new Set(items.map(it => it.ubicacion)).size;
+    const saldoTotalCodigo = items.reduce((s, it) => s + it.saldo, 0);
+    const fragmentadoTotal = numUbicacionesTotal >= 2;
+    const saldoAjustado = saldoTotalCodigo <= CONSOLIDAR_UMBRAL_VENTAS * ventasTotal3M;
+    const criterioB = fragmentadoTotal && saldoAjustado;
+
+    const consolidar = criterioA || criterioB;
+
+    // Si va a consolidar y alguna de sus ubicaciones ya es línea de sacado, esa es el
+    // destino sugerido (se prioriza por prefijo 00K > 0K > 0J y luego por mayor saldo,
+    // para mover lo mínimo posible). Si ninguna está en línea, no hay sugerencia (null).
+    let consolidarDestino = null;
+    if(consolidar && lineaTemp.length > 0){
+      const ordenLinea = [...lineaTemp].sort((a,b) =>
+        (tierUbicacion(a.ubicacion)-tierUbicacion(b.ubicacion)) || (b.saldo-a.saldo)
+      );
+      consolidarDestino = ordenLinea[0].ubicacion;
+    }
 
     items.forEach((it, idx) => {
       const fefoRank = idx + 1;
@@ -574,9 +602,9 @@ function analizar(){
       const posicion1m = calcPosicion(c1m, fefoRank, enLinea, f1m);
       const posicion3m = calcPosicion(c3m, fefoRank, enLinea, f3m);
       processed.push({
-        ...it, fefoRank, enLinea, promMes, consolidar,
-        clase1m: c1m, frecuencia1m: f1m, prioridad1m, posicion1m,
-        clase3m: c3m, frecuencia3m: f3m, prioridad3m, posicion3m,
+        ...it, fefoRank, enLinea, promMes, consolidar, consolidarDestino,
+        clase1m: c1m, frecuencia1m: f1m, prioridad1m, posicion1m, unidades1m: u1m,
+        clase3m: c3m, frecuencia3m: f3m, prioridad3m, posicion3m, unidades3m: u3m,
         // la prioridad "principal" que maneja filtros, KPIs y resaltado es la de 3 meses
         clase: c3m, frecuencia: f3m, prioridad: prioridad3m, posicion: posicion3m
       });
@@ -719,6 +747,7 @@ function renderAnalisisTable(){
     <tr>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Código</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Ubicación</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Lote</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Lote BPCS</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px]">Expira</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-right text-[11px]">Saldo</th>
@@ -727,18 +756,20 @@ function renderAnalisisTable(){
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px] bg-tertiary-fixed/40">Destino sugerido<div class="text-[8px] font-normal normal-case tracking-normal text-on-surface-variant/70">liberado por Elevar</div></th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px] bg-amber-100">Consolidar</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px]">Posición<div class="text-[8px] font-normal normal-case tracking-normal text-on-surface-variant/70">en línea de sacado</div></th>
-      <th colspan="3" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
+      <th colspan="4" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
         Detalle a 1 Mes${rango1MLabel ? `<div class="text-[9px] font-normal normal-case tracking-normal text-on-surface-variant/70 mt-0.5">${rango1MLabel}</div>` : ''}
       </th>
-      <th colspan="3" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
+      <th colspan="4" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
         Detalle a 3 Meses${rango3MLabel ? `<div class="text-[9px] font-normal normal-case tracking-normal text-on-surface-variant/70 mt-0.5">${rango3MLabel}</div>` : ''}
       </th>
     </tr>
     <tr>
       <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-right text-[11px] border-l border-outline-variant/30">Frec.</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-right text-[11px]">Unid.</th>
       <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Clase</th>
       <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Obs.</th>
       <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-right text-[11px] border-l border-outline-variant/30">Frec.</th>
+      <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-right text-[11px]">Unid.</th>
       <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Clase</th>
       <th class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px]">Obs.</th>
     </tr>`;
@@ -748,18 +779,21 @@ function renderAnalisisTable(){
     <tr class="hover:bg-surface-container-lowest transition-colors">
       <td class="px-2 py-2 text-xs font-bold text-primary font-data-mono">${r.codigo}</td>
       <td class="px-2 py-2 text-xs text-on-surface-variant">${r.ubicacion}</td>
+      <td class="px-2 py-2 text-xs text-on-surface-variant font-data-mono">${r.lote}</td>
       <td class="px-2 py-2 text-xs text-on-surface-variant font-data-mono">${r.loteBpcs}</td>
       <td class="px-2 py-2 text-xs text-on-surface-variant">${formatFecha(r.expira)}</td>
       <td class="px-2 py-2 text-xs font-medium text-right">${r.saldo}</td>
       <td class="px-2 py-2 text-xs font-bold text-right text-secondary">${r.promMes.toFixed(1)}</td>
       <td class="px-2 py-2 text-xs text-center text-on-surface-variant">#${r.fefoRank}</td>
       <td class="px-2 py-2 text-xs font-bold text-center ${r.destinoSugerido ? 'text-on-tertiary-fixed-variant' : 'text-on-surface-variant/40'}">${r.destinoSugerido || '-'}</td>
-      <td class="px-2 py-2 text-center">${r.consolidar ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Consolidar</span>' : '<span class="text-on-surface-variant/40 text-xs">-</span>'}</td>
+      <td class="px-2 py-2 text-center">${r.consolidar ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Consolidar</span>${r.consolidarDestino ? `<div class="text-[9px] text-amber-700 mt-0.5">→ ${r.consolidarDestino}</div>` : ''}` : '<span class="text-on-surface-variant/40 text-xs">-</span>'}</td>
       <td class="px-2 py-2 text-center">${posicionBadge(r.posicion)}</td>
       <td class="px-2 py-2 text-xs text-right border-l border-outline-variant/20">${r.frecuencia1m}</td>
+      <td class="px-2 py-2 text-xs text-right">${r.unidades1m}</td>
       <td class="px-2 py-2 text-center">${claseBadge(r.clase1m)}</td>
       <td class="px-2 py-2 text-center">${obsBadgeSmall(r.prioridad1m)}</td>
       <td class="px-2 py-2 text-xs text-right border-l border-outline-variant/20">${r.frecuencia3m}</td>
+      <td class="px-2 py-2 text-xs text-right">${r.unidades3m}</td>
       <td class="px-2 py-2 text-center">${claseBadge(r.clase3m)}</td>
       <td class="px-2 py-2 text-center">${obsBadgeSmall(r.prioridad3m)}</td>
     </tr>`).join('');
@@ -1020,13 +1054,13 @@ function exportFilteredXls(){
     if(search && !(r.codigo.includes(search) || r.ubicacion.includes(search))) return false;
     return true;
   });
-  const headers = ['CODIGO','UBICACION','LOTE_BPCS','FECHA_EXPIRA','FEFO','DESTINO_SUGERIDO','SALDO','PROM_UNIDADES_MES','CONSOLIDAR','POSICION','FREC_1M','CLASE_1M','OBS_1M','FREC_3M','CLASE_3M','OBS_3M'];
+  const headers = ['CODIGO','UBICACION','LOTE','LOTE_BPCS','FECHA_EXPIRA','FEFO','DESTINO_SUGERIDO','SALDO','PROM_UNIDADES_MES','CONSOLIDAR','CONSOLIDAR_DESTINO','POSICION','FREC_1M','UNID_1M','CLASE_1M','OBS_1M','FREC_3M','UNID_3M','CLASE_3M','OBS_3M'];
   const obsLabel = {alta_frecuencia:'Bajar', fefo:'Adelante', elevar:'Elevar', ok:'Sin alerta'};
   const posLabel = {adelante:'Adelante', medio:'Medio', fondo:'Fondo'};
   const aoa = [headers].concat(filtered.map(r => [
-    r.codigo, r.ubicacion, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.destinoSugerido || '-', r.saldo, r.promMes.toFixed(1), r.consolidar ? 'Si' : '-', posLabel[r.posicion] || '-',
-    r.frecuencia1m, r.clase1m, obsLabel[r.prioridad1m],
-    r.frecuencia3m, r.clase3m, obsLabel[r.prioridad3m]
+    r.codigo, r.ubicacion, r.lote, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.destinoSugerido || '-', r.saldo, r.promMes.toFixed(1), r.consolidar ? 'Si' : '-', r.consolidarDestino || '-', posLabel[r.posicion] || '-',
+    r.frecuencia1m, r.unidades1m, r.clase1m, obsLabel[r.prioridad1m],
+    r.frecuencia3m, r.unidades3m, r.clase3m, obsLabel[r.prioridad3m]
   ]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = headers.map(() => ({wch: 14}));
