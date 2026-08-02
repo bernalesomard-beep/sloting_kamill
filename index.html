@@ -97,6 +97,10 @@
       <span class="material-symbols-outlined">merge</span>
       <span class="text-body-sm font-medium">Consolidar</span>
     </a>
+    <a data-nav="analisis" data-select="posicion" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" href="#">
+      <span class="material-symbols-outlined">low_priority</span>
+      <span class="text-body-sm font-medium">Posición en línea</span>
+    </a>
     <a data-nav="raw_saldo" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg transition-colors" href="#">
       <span class="material-symbols-outlined">inventory_2</span><span class="text-body-sm font-medium">Saldo de Almacén</span>
     </a>
@@ -201,6 +205,10 @@
                 <span class="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">merge</span>
                 <span class="text-[10px] font-bold mt-2 text-center">Consolidar</span>
               </button>
+              <button data-select="posicion" class="action-shortcut flex flex-col items-center justify-center p-3 bg-white border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors group">
+                <span class="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform">low_priority</span>
+                <span class="text-[10px] font-bold mt-2 text-center">Posición en línea</span>
+              </button>
             </div>
           </div>
         </section>
@@ -221,7 +229,12 @@
             <div class="flex gap-3">
               <div class="w-3 h-3 rounded-full bg-primary-container shrink-0 mt-1"></div>
               <div class="flex flex-col"><span class="text-[13px] font-bold text-primary">Elevar</span>
-              <span class="text-[11px] leading-tight text-on-surface-variant">Baja frecuencia + ocupa línea de sacado.</span></div>
+              <span class="text-[11px] leading-tight text-on-surface-variant">Ocupa línea de sacado y NO tiene ventas (cualquier clase, stock muerto).</span></div>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-3 h-3 rounded-full bg-slate-400 shrink-0 mt-1"></div>
+              <div class="flex flex-col"><span class="text-[13px] font-bold text-primary">Posición (A/B/C)</span>
+              <span class="text-[11px] leading-tight text-on-surface-variant">Con ventas, se queda en línea de sacado: Clase A adelante, B en medio, C al fondo. Nunca se eleva.</span></div>
             </div>
             <div class="flex gap-3">
               <div class="w-3 h-3 rounded-full bg-amber-400 shrink-0 mt-1"></div>
@@ -254,6 +267,7 @@
                   <option value="alta_frecuencia">Bajar</option>
                   <option value="fefo">Adelante</option>
                   <option value="elevar">Elevar</option>
+                  <option value="posicion">Posición en línea (Adelante/Medio/Fondo)</option>
                   <option value="consolidar">Consolidar</option>
                 </select>
               </div>
@@ -293,7 +307,7 @@
     </div>
   </main>
   <footer class="text-center py-3 text-[11px] italic text-on-surface-variant/50 border-t border-outline-variant">
-    "Mi enfoque no es competir con el mercado interno, sino redefinir lo que la empresa considera posible"
+    "No busco encajar en la cultura de la empresa; mi objetivo es elevar los estándares de la industria."
   </footer>
 </div>
 
@@ -307,6 +321,30 @@
     <div class="flex justify-end gap-2">
       <button id="configCancelBtn" class="text-sm px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-100">Cancelar</button>
       <button id="configSaveBtn" class="text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de carga directa de archivos -->
+<div id="uploadModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-lg p-5 w-full max-w-md">
+    <h3 id="uploadModalTitle" class="font-semibold text-slate-800 mb-1">Subir datos</h3>
+    <p class="text-xs text-slate-500 mb-3">Sube un archivo .xls, .xlsx o .csv con la primera fila como encabezado.</p>
+
+    <label class="block text-xs font-bold text-slate-600 mb-1">Modo</label>
+    <div class="flex gap-4 mb-3 text-sm">
+      <label class="flex items-center gap-1.5"><input type="radio" name="uploadModo" value="reemplazar" checked>Reemplazar todo</label>
+      <label class="flex items-center gap-1.5"><input type="radio" name="uploadModo" value="agregar">Agregar al final</label>
+    </div>
+
+    <label class="block text-xs font-bold text-slate-600 mb-1">Archivo</label>
+    <input id="uploadFileInput" type="file" accept=".csv,.xls,.xlsx" class="w-full text-sm mb-3">
+
+    <div id="uploadStatus" class="hidden text-xs px-3 py-2 rounded-lg mb-3"></div>
+
+    <div class="flex justify-end gap-2">
+      <button id="uploadCancelBtn" class="text-sm px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-100">Cancelar</button>
+      <button id="uploadSubmitBtn" class="text-sm px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Subir</button>
     </div>
   </div>
 </div>
@@ -380,7 +418,7 @@ function analizar(){
     if(cod && ubi) lineaSet.add(cod + '|' + ubi);
   });
 
-  // --- Fecha ancla: la más reciente presente en el kardex ---
+  // --- Fecha ancla: la más reciente presente en el kardex; fecha mínima: la más antigua ---
   function parseYyyymmdd(s){
     s = (s||'').toString().trim();
     if(!/^\d{8}$/.test(s)) return null;
@@ -390,20 +428,28 @@ function analizar(){
     const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
     return `${y}${m}${day}`;
   }
-  let anchor = null;
+  let anchor = null, minFecha = null;
   rawKardex.forEach(r => {
     const d = parseYyyymmdd(r['FECHA']);
-    if(d && (!anchor || d > anchor)) anchor = d;
+    if(!d) return;
+    if(!anchor || d > anchor) anchor = d;
+    if(!minFecha || d < minFecha) minFecha = d;
   });
 
-  function cutoffStr(dias){
-    if(!anchor) return null;
-    const d = new Date(anchor);
-    d.setDate(d.getDate() - dias);
-    return toYyyymmdd(d);
+  // Ventanas por mes calendario: "1 Mes" = 1° del mes de la fecha ancla hasta la fecha ancla.
+  // "3 Meses" = 1° del mes que va 2 meses atrás hasta la fecha ancla (3 meses calendario completos).
+  // Si no hay datos que cubran ese inicio, se recorta a la fecha más antigua real del kardex
+  // (nunca se inventa un rango donde no hay data).
+  function primerDiaMesesAtras(ancla, mesesAtras){
+    return new Date(ancla.getFullYear(), ancla.getMonth() - mesesAtras, 1);
   }
-  const cutoff1M = cutoffStr(30);
-  const cutoff3M = cutoffStr(90);
+  let cutoff1MDate = anchor ? primerDiaMesesAtras(anchor, 0) : null;
+  let cutoff3MDate = anchor ? primerDiaMesesAtras(anchor, 2) : null;
+  if(minFecha && cutoff1MDate && cutoff1MDate < minFecha) cutoff1MDate = minFecha;
+  if(minFecha && cutoff3MDate && cutoff3MDate < minFecha) cutoff3MDate = minFecha;
+
+  const cutoff1M = cutoff1MDate ? toYyyymmdd(cutoff1MDate) : null;
+  const cutoff3M = cutoff3MDate ? toYyyymmdd(cutoff3MDate) : null;
   rango1MLabel = anchor ? `${formatFecha(cutoff1M)} - ${formatFecha(toYyyymmdd(anchor))}` : '';
   rango3MLabel = anchor ? `${formatFecha(cutoff3M)} - ${formatFecha(toYyyymmdd(anchor))}` : '';
 
@@ -460,11 +506,25 @@ function analizar(){
   const promedioMensual = new Map();
   unidades3M.forEach((total, cod) => promedioMensual.set(cod, total / 3));
 
-  function calcPrioridad(clase, fefoRank, enLinea){
+  function calcPrioridad(clase, fefoRank, enLinea, frecuencia){
     if(clase === 'A' && fefoRank === 1 && !enLinea) return 'alta_frecuencia';
     if(fefoRank === 1 && !enLinea) return 'fefo';
-    if(clase === 'C' && enLinea && fefoRank !== 1) return 'elevar';
+    if(enLinea && fefoRank !== 1){
+      // Sin ventas en la ventana (cualquier clase) -> stock muerto, se eleva a altura.
+      // Con ventas -> NO se eleva (retrasaría el próximo pedido); se queda en línea
+      // de sacado y solo se reordena su posición según su clase (ver calcPosicion).
+      return frecuencia === 0 ? 'elevar' : 'ok';
+    }
     return 'ok';
+  }
+
+  function calcPosicion(clase, fefoRank, enLinea, frecuencia){
+    // Solo aplica a lo que ya está en línea de sacado, no es el próximo en salir,
+    // y SÍ tiene ventas (si no tiene ventas, ya se marcó 'elevar' arriba).
+    if(!(enLinea && fefoRank !== 1 && frecuencia > 0)) return null;
+    if(clase === 'A') return 'adelante';
+    if(clase === 'B') return 'medio';
+    return 'fondo';
   }
 
   const byCode = new Map();
@@ -509,20 +569,27 @@ function analizar(){
     items.forEach((it, idx) => {
       const fefoRank = idx + 1;
       const enLinea = lineaSet.has(cod + '|' + it.ubicacion);
-      const prioridad1m = calcPrioridad(c1m, fefoRank, enLinea);
-      const prioridad3m = calcPrioridad(c3m, fefoRank, enLinea);
+      const prioridad1m = calcPrioridad(c1m, fefoRank, enLinea, f1m);
+      const prioridad3m = calcPrioridad(c3m, fefoRank, enLinea, f3m);
+      const posicion1m = calcPosicion(c1m, fefoRank, enLinea, f1m);
+      const posicion3m = calcPosicion(c3m, fefoRank, enLinea, f3m);
       processed.push({
         ...it, fefoRank, enLinea, promMes, consolidar,
-        clase1m: c1m, frecuencia1m: f1m, prioridad1m,
-        clase3m: c3m, frecuencia3m: f3m, prioridad3m,
+        clase1m: c1m, frecuencia1m: f1m, prioridad1m, posicion1m,
+        clase3m: c3m, frecuencia3m: f3m, prioridad3m, posicion3m,
         // la prioridad "principal" que maneja filtros, KPIs y resaltado es la de 3 meses
-        clase: c3m, frecuencia: f3m, prioridad: prioridad3m
+        clase: c3m, frecuencia: f3m, prioridad: prioridad3m, posicion: posicion3m
       });
     });
   });
 
   const priOrder = {alta_frecuencia:0, fefo:1, elevar:2, ok:3};
-  processed.sort((a,b) => (priOrder[a.prioridad]-priOrder[b.prioridad]) || (b.frecuencia-a.frecuencia));
+  const claseOrder = {A:0, B:1, C:2};
+  processed.sort((a,b) =>
+    (priOrder[a.prioridad]-priOrder[b.prioridad]) ||
+    (claseOrder[a.clase]-claseOrder[b.clase]) ||
+    (b.frecuencia-a.frecuencia)
+  );
 
   // Cruce Elevar -> Bajar: ubicaciones de línea de sacado que se liberan (Elevar)
   // se sugieren como destino para los códigos que hay que Bajar. Se prioriza:
@@ -557,6 +624,7 @@ function renderAlertCount(){
     {key:'alta_frecuencia', label:'Bajar a línea de sacado', count: rows.filter(r => r.prioridad === 'alta_frecuencia').length, icon:'south'},
     {key:'fefo', label:'Adelante (FEFO)', count: rows.filter(r => r.prioridad === 'fefo').length, icon:'priority_high'},
     {key:'elevar', label:'Elevar a altura', count: rows.filter(r => r.prioridad === 'elevar').length, icon:'north'},
+    {key:'posicion', label:'Posición en línea (A/B/C)', count: rows.filter(r => r.posicion).length, icon:'low_priority'},
     {key:'consolidar', label:'Consolidar', count: rows.filter(r => r.consolidar).length, icon:'merge'}
   ];
   const alertas = rows.filter(r => r.prioridad !== 'ok' || r.consolidar).length;
@@ -623,6 +691,15 @@ function obsBadgeSmall(p){
   return map[p] || map.ok;
 }
 
+function posicionBadge(pos){
+  const map = {
+    adelante: `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Adelante</span>`,
+    medio: `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Medio</span>`,
+    fondo: `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold">Fondo</span>`
+  };
+  return map[pos] || '<span class="text-on-surface-variant/40 text-xs">-</span>';
+}
+
 function renderAnalisisTable(){
   const search = document.getElementById('searchInput').value.trim().toUpperCase();
   const claseFilter = document.getElementById('claseFilter').value;
@@ -630,6 +707,7 @@ function renderAnalisisTable(){
 
   const filtered = rows.filter(r => {
     if(obs === 'consolidar'){ if(!r.consolidar) return false; }
+    else if(obs === 'posicion'){ if(!r.posicion) return false; }
     else if(obs && r.prioridad !== obs) return false;
     if(claseFilter && r.clase !== claseFilter) return false;
     if(search && !(r.codigo.includes(search) || r.ubicacion.includes(search))) return false;
@@ -648,6 +726,7 @@ function renderAnalisisTable(){
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px]">FEFO</th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-[11px] bg-tertiary-fixed/40">Destino sugerido<div class="text-[8px] font-normal normal-case tracking-normal text-on-surface-variant/70">liberado por Elevar</div></th>
       <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px] bg-amber-100">Consolidar</th>
+      <th rowspan="2" class="px-2 py-2 font-bold uppercase tracking-widest align-bottom text-center text-[11px]">Posición<div class="text-[8px] font-normal normal-case tracking-normal text-on-surface-variant/70">en línea de sacado</div></th>
       <th colspan="3" class="px-2 py-1.5 font-bold uppercase tracking-widest text-center text-[11px] border-l border-outline-variant/30 bg-surface-container-low">
         Detalle a 1 Mes${rango1MLabel ? `<div class="text-[9px] font-normal normal-case tracking-normal text-on-surface-variant/70 mt-0.5">${rango1MLabel}</div>` : ''}
       </th>
@@ -676,6 +755,7 @@ function renderAnalisisTable(){
       <td class="px-2 py-2 text-xs text-center text-on-surface-variant">#${r.fefoRank}</td>
       <td class="px-2 py-2 text-xs font-bold text-center ${r.destinoSugerido ? 'text-on-tertiary-fixed-variant' : 'text-on-surface-variant/40'}">${r.destinoSugerido || '-'}</td>
       <td class="px-2 py-2 text-center">${r.consolidar ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">Consolidar</span>' : '<span class="text-on-surface-variant/40 text-xs">-</span>'}</td>
+      <td class="px-2 py-2 text-center">${posicionBadge(r.posicion)}</td>
       <td class="px-2 py-2 text-xs text-right border-l border-outline-variant/20">${r.frecuencia1m}</td>
       <td class="px-2 py-2 text-center">${claseBadge(r.clase1m)}</td>
       <td class="px-2 py-2 text-center">${obsBadgeSmall(r.prioridad1m)}</td>
@@ -831,19 +911,101 @@ function downloadTemplate(navKey){
   XLSX.writeFile(wb, cfg.sheetName + '_plantilla.xlsx');
 }
 
-function getAppsScriptUrl(){ return localStorage.getItem('slotting_apps_script_url') || ''; }
+// URL por defecto del Web App de Apps Script (ya desplegado). Si en algún
+// momento rediseñas o vuelves a implementar el script y cambia la URL,
+// puedes sobreescribirla desde el ⚙️ Ajustes sin tocar este código.
+const APPS_SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycby5iT82Ad_R6j9rpT7uuqedm5jQkWQa0BLqMPTmryext5bibUGDEJDTt1iFeAiS1DvhGg/exec';
+function getAppsScriptUrl(){ return localStorage.getItem('slotting_apps_script_url') || APPS_SCRIPT_URL_DEFAULT; }
+
+let uploadTargetSheet = null;
 
 function openUploadForm(navKey){
   const cfg = RAW_CONFIG[navKey];
   const base = getAppsScriptUrl();
   if(!base){
     openConfigModal();
-    setStatus('Configura primero la URL de tu formulario de carga (Ajustes) para poder subir información.', 'error');
+    setStatus('Configura primero la URL de tu Web App de Apps Script (⚙️ Ajustes) para poder subir información.', 'error');
     return;
   }
-  const sep = base.includes('?') ? '&' : '?';
-  window.open(base + sep + 'sheet=' + encodeURIComponent(cfg.sheetName), '_blank');
+  uploadTargetSheet = cfg.sheetName;
+  document.getElementById('uploadModalTitle').textContent = 'Subir datos — ' + cfg.sheetName;
+  document.getElementById('uploadFileInput').value = '';
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.classList.add('hidden');
+  statusEl.textContent = '';
+  document.getElementById('uploadModal').classList.remove('hidden');
 }
+function closeUploadModal(){ document.getElementById('uploadModal').classList.add('hidden'); }
+
+function leerArchivoComoCsv(file){
+  return new Promise((resolve, reject) => {
+    const nombre = file.name.toLowerCase();
+    const esExcel = nombre.endsWith('.xls') || nombre.endsWith('.xlsx');
+    const reader = new FileReader();
+    if(esExcel){
+      reader.onload = evt => {
+        try {
+          const wb = XLSX.read(evt.target.result, {type:'binary'});
+          const primeraHoja = wb.Sheets[wb.SheetNames[0]];
+          resolve(XLSX.utils.sheet_to_csv(primeraHoja));
+        } catch(err){ reject(err); }
+      };
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.readAsBinaryString(file);
+    } else {
+      reader.onload = evt => resolve(evt.target.result);
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.readAsText(file);
+    }
+  });
+}
+
+async function subirArchivo(){
+  const base = getAppsScriptUrl();
+  const file = document.getElementById('uploadFileInput').files[0];
+  const modo = document.querySelector('input[name="uploadModo"]:checked').value;
+  const statusEl = document.getElementById('uploadStatus');
+  const submitBtn = document.getElementById('uploadSubmitBtn');
+
+  if(!file){
+    statusEl.className = 'text-xs px-3 py-2 rounded-lg mb-3 bg-error-container text-on-error-container';
+    statusEl.textContent = 'Selecciona un archivo primero.';
+    return;
+  }
+  if(modo === 'reemplazar' && !confirm('Esto borrará todo el contenido actual de "' + uploadTargetSheet + '" y lo reemplazará. ¿Continuar?')){
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.className = 'text-xs px-3 py-2 rounded-lg mb-3 bg-secondary-container text-on-secondary-container';
+  statusEl.textContent = 'Subiendo...';
+
+  try {
+    const csvText = await leerArchivoComoCsv(file);
+    // Content-Type text/plain evita que el navegador dispare una petición de
+    // verificación (preflight) que el Web App de Apps Script no responde.
+    await fetch(base, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ sheetName: uploadTargetSheet, modo, csvText })
+    });
+    // Con mode "no-cors" el navegador no deja leer la respuesta real de Apps Script
+    // (limitación de Google, no hay forma de evitarlo desde un HTML externo),
+    // así que asumimos éxito si el fetch no lanzó error de red.
+    statusEl.className = 'text-xs px-3 py-2 rounded-lg mb-3 bg-tertiary-fixed text-on-tertiary-fixed';
+    statusEl.textContent = 'Enviado. Dale clic a "Actualizar Datos" en unos segundos para confirmar que se escribió en el Sheet.';
+  } catch(err){
+    statusEl.className = 'text-xs px-3 py-2 rounded-lg mb-3 bg-error-container text-on-error-container';
+    statusEl.textContent = 'Error al subir: ' + err.message;
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+document.getElementById('uploadCancelBtn').addEventListener('click', closeUploadModal);
+document.getElementById('uploadSubmitBtn').addEventListener('click', subirArchivo);
+
 
 function exportFilteredXls(){
   if(currentNav !== 'analisis'){ return; }
@@ -852,15 +1014,17 @@ function exportFilteredXls(){
   const obs = document.getElementById('obsFilter').value;
   const filtered = rows.filter(r => {
     if(obs === 'consolidar'){ if(!r.consolidar) return false; }
+    else if(obs === 'posicion'){ if(!r.posicion) return false; }
     else if(obs && r.prioridad !== obs) return false;
     if(claseFilter && r.clase !== claseFilter) return false;
     if(search && !(r.codigo.includes(search) || r.ubicacion.includes(search))) return false;
     return true;
   });
-  const headers = ['CODIGO','UBICACION','LOTE_BPCS','FECHA_EXPIRA','FEFO','DESTINO_SUGERIDO','SALDO','PROM_UNIDADES_MES','CONSOLIDAR','FREC_1M','CLASE_1M','OBS_1M','FREC_3M','CLASE_3M','OBS_3M'];
+  const headers = ['CODIGO','UBICACION','LOTE_BPCS','FECHA_EXPIRA','FEFO','DESTINO_SUGERIDO','SALDO','PROM_UNIDADES_MES','CONSOLIDAR','POSICION','FREC_1M','CLASE_1M','OBS_1M','FREC_3M','CLASE_3M','OBS_3M'];
   const obsLabel = {alta_frecuencia:'Bajar', fefo:'Adelante', elevar:'Elevar', ok:'Sin alerta'};
+  const posLabel = {adelante:'Adelante', medio:'Medio', fondo:'Fondo'};
   const aoa = [headers].concat(filtered.map(r => [
-    r.codigo, r.ubicacion, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.destinoSugerido || '-', r.saldo, r.promMes.toFixed(1), r.consolidar ? 'Si' : '-',
+    r.codigo, r.ubicacion, r.loteBpcs, formatFecha(r.expira), r.fefoRank, r.destinoSugerido || '-', r.saldo, r.promMes.toFixed(1), r.consolidar ? 'Si' : '-', posLabel[r.posicion] || '-',
     r.frecuencia1m, r.clase1m, obsLabel[r.prioridad1m],
     r.frecuencia3m, r.clase3m, obsLabel[r.prioridad3m]
   ]));
